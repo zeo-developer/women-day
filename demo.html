@@ -9,14 +9,13 @@
     <style>
         body, html {
             margin: 0; padding: 0;
-            background-color: #000; /* Nền đen sâu thẳm */
+            background-color: #000;
             color: white;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow-x: hidden;
-            height: 200vh; /* Tạo chiều cao để cuộn chuột */
+            height: 200vh;
         }
 
-        /* Canvas vẽ trái tim hạt ở màn hình 1 */
         canvas {
             position: fixed;
             top: 0; left: 0;
@@ -36,16 +35,8 @@
             justify-content: center;
             align-items: center;
             text-align: center;
-            position: relative;
-        }
-
-        .screen-1 h1 {
-            font-weight: 200;
-            letter-spacing: 12px;
-            opacity: 0.6;
-            text-transform: uppercase;
-            font-size: 1.3rem;
-            margin-top: -100px; /* Đẩy chữ lên trên trái tim một chút */
+            padding: 0 20px; /* Thêm padding cho mobile */
+            box-sizing: border-box;
         }
 
         /* --- STYLE CHO MÀN HÌNH 2 (BÓ HOA) --- */
@@ -54,48 +45,60 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             display: flex;
+            flex-direction: column; /* Chồng chữ lên hoa dễ hơn */
             justify-content: center;
             align-items: center;
             z-index: 3;
-            pointer-events: none; /* Không cản trở cuộn chuột */
-            opacity: 0; /* Ẩn lúc đầu */
+            pointer-events: none;
+            opacity: 0;
         }
 
         .real-bouquet {
-            max-width: 80%; /* Kích thước bó hoa */
-            max-height: 80vh;
+            max-width: 90%; /* Tăng độ rộng cho mobile */
+            max-height: 60vh; /* Giới hạn chiều cao để nhường chỗ cho chữ */
             height: auto;
             object-fit: contain;
-            /* Hiệu ứng đổ bóng lấp lánh nhẹ cho bó hoa nổi bật trên nền đen */
-            filter: drop-shadow(0 0 10px rgba(255, 20, 147, 0.6));
-            transform: scale(0.8); /* Bắt đầu hơi nhỏ để tạo hiệu ứng phóng to */
+            filter: drop-shadow(0 0 10px rgba(255, 20, 147, 0.5));
+            transform: scale(0.8);
         }
 
         .wish-text {
-            font-size: 5.5rem;
-            font-family: 'Georgia', serif; /* Font chữ sang trọng */
-            color: #ff2d55; /* Màu hồng đỏ rực rỡ */
-            text-shadow: 0 0 40px rgba(255, 45, 85, 1);
+            font-family: 'Georgia', serif;
+            color: #ff2d55;
+            text-shadow: 0 0 20px rgba(255, 45, 85, 0.8);
             opacity: 0;
             z-index: 10;
             font-style: italic;
-            position: absolute;
-            top: -5vh; /* Vị trí chữ phía trên bó hoa */
-            transform: translateY(30px);
+            margin-top: 20px;
+            text-align: center;
+            line-height: 1.2;
+            /* Responsive Font Size */
+            font-size: clamp(2.5rem, 8vw, 5.5rem); 
         }
 
         .scroll-hint {
             position: absolute;
-            bottom: 40px;
-            font-size: 0.85rem;
-            letter-spacing: 3px;
+            bottom: 30px;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
             opacity: 0.5;
+            text-transform: uppercase;
             animation: bounce_hint 2s infinite;
         }
 
         @keyframes bounce_hint {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Tối ưu riêng cho màn hình nhỏ (Mobile) */
+        @media (max-width: 600px) {
+            .real-bouquet {
+                max-height: 50vh;
+            }
+            .wish-text {
+                padding: 0 10px;
+            }
         }
     </style>
 </head>
@@ -105,58 +108,58 @@
     
     <div id="bouquet-container">
         <img src="1.png" alt="Bó hoa hồng đỏ" class="real-bouquet" id="bouquetImg">
+        <h2 class="wish-text" id="wishingText">Happy Women's Day</h2>
     </div>
 
     <div class="main-content">
         <section class="screen-1">
+            <div class="scroll-hint">Cuộn xuống để nhận quà</div>
         </section>
-
         <section class="screen-2">
-            <h2 class="wish-text" id="wishingText">Happy Women's Day</h2>
-        </section>
+            </section>
     </div>
 
     <script>
         gsap.registerPlugin(ScrollTrigger);
 
-        // --- PHẦN 1: CANVAS TRÁI TIM HẠT (MÀN HÌNH 1) ---
         const canvas = document.getElementById('heartCanvas');
         const ctx = canvas.getContext('2d');
         let width, height, particles = [];
-        const particleCount = 1500; // Số lượng hạt lớn để trái tim dày và đẹp
+        const isMobile = window.innerWidth < 600;
+        const particleCount = isMobile ? 500 : 1000; // Giảm hạt trên mobile để mượt hơn
 
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
+            // Nếu resize thủ công, cần tính toán lại tọa độ đích của hạt
+            updateParticleTargets();
         }
-        window.addEventListener('resize', resize);
-        resize();
 
-        // Công thức toán học tạo tọa độ hình trái tim
         function getHeartPoint(t) {
             const x = 16 * Math.pow(Math.sin(t), 3);
             const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
-            const scale = Math.min(width, height) / 45; // Tự động scale theo màn hình
-            return { x: x * scale, y: y * scale };
+            // Scale trái tim nhỏ hơn trên Mobile
+            const baseScale = Math.min(width, height) / (isMobile ? 55 : 45); 
+            return { x: x * baseScale, y: y * baseScale };
         }
 
         class Particle {
             constructor(id) {
-                // Xuất hiện ngẫu nhiên ban đầu
                 this.x = Math.random() * width;
                 this.y = Math.random() * height;
+                this.id = id;
+                this.updateTarget();
                 
-                // Tọa độ đích tạo thành hình trái tim
-                const t = (id / particleCount) * Math.PI * 2;
+                this.size = Math.random() * (isMobile ? 2 : 3) + 0.5;
+                this.color = `rgba(255, ${Math.random() * 120 + 80}, ${Math.random() * 100 + 150}, ${Math.random() * 0.7 + 0.3})`;
+                this.speedY = Math.random() * 0.4 + 0.1;
+                this.opacity = 1;
+            }
+            updateTarget() {
+                const t = (this.id / particleCount) * Math.PI * 2;
                 const pos = getHeartPoint(t);
                 this.targetX = width / 2 + pos.x;
                 this.targetY = height / 2 + pos.y;
-                
-                this.size = Math.random() * 2.5 + 0.5; // Kích thước hạt khác nhau
-                // Màu hồng neon lấp lánh
-                this.color = `rgba(255, ${Math.random() * 120 + 80}, ${Math.random() * 100 + 150}, ${Math.random() * 0.7 + 0.3})`;
-                this.speedY = Math.random() * 0.4 + 0.1; // Tốc độ rơi nhẹ
-                this.opacity = 1;
             }
             draw() {
                 ctx.globalAlpha = this.opacity;
@@ -164,95 +167,76 @@
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.globalAlpha = 1;
             }
             update() {
-                // Hiệu ứng đốm sáng rơi nhẹ nhàng xuyên suốt
                 this.y += this.speedY;
                 if (this.y > height) this.y = -10;
             }
         }
 
-        // Khởi tạo các hạt particle
+        function updateParticleTargets() {
+            particles.forEach(p => p.updateTarget());
+        }
+
         function initParticles() {
+            particles = [];
             for (let i = 0; i < particleCount; i++) {
                 const p = new Particle(i);
                 particles.push(p);
-                
-                // Animation màn hình 1: Các hạt bay vào ghép thành trái tim ngay khi load
                 gsap.to(p, {
                     x: p.targetX,
                     y: p.targetY,
-                    duration: 3,
+                    duration: 2.5,
                     ease: "expo.out",
-                    delay: Math.random() * 1.8 // Tạo độ trễ ngẫu nhiên cho đẹp
+                    delay: Math.random() * 1.5
                 });
             }
-            render();
         }
 
-        // Vòng lặp vẽ canvas
         function render() {
-            // Tạo đuôi mờ cho hạt
             ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
             ctx.fillRect(0, 0, width, height);
-            
             particles.forEach(p => {
-                p.update(); // Cập nhật vị trí (rơi)
-                p.draw();   // Vẽ hạt
+                p.update();
+                p.draw();
             });
             requestAnimationFrame(render);
         }
 
-        // Chạy khởi tạo particle
+        window.addEventListener('resize', resize);
+        resize();
         initParticles();
+        render();
 
-
-        // --- PHẦN 2: LOGIC CUỘN MÀN HÌNH (SCROLL TRIGGER) ---
-        
-        // Timeline chính điều khiển sự chuyển cảnh giữa màn 1 và màn 2
+        // --- SCROLL ANIMATION ---
         const mainTimeline = gsap.timeline({
             scrollTrigger: {
-                trigger: ".screen-2", // Khi màn hình 2 bắt đầu vào tầm nhìn
-                start: "top bottom",    // Khi đỉnh màn 2 chạm đáy trình duyệt
-                end: "top top",         // Khi đỉnh màn 2 chạm đỉnh trình duyệt
-                scrub: 1.2,             // Cuộn mượt mà theo tay người dùng
-                // markers: true        // Bật debug vị trí cuộn nếu cần
+                trigger: ".screen-2",
+                start: "top bottom",
+                end: "top top",
+                scrub: 1.5,
             }
         });
 
-        // 1. Màn hình 1: Trái tim hạt tan rã và mờ dần khi cuộn
+        // Hạt tan rã
         particles.forEach(p => {
             mainTimeline.to(p, {
                 opacity: 0,
-                x: p.x + (Math.random() - 0.5) * 800, // Bay tán loạn
-                y: p.y + (Math.random() - 0.5) * 800,
-                duration: 1,
-                ease: "power1.in"
-            }, 0); // Chạy ngay lập tức (thời điểm 0)
+                x: p.x + (Math.random() - 0.5) * (isMobile ? 200 : 400),
+                y: p.y + (Math.random() - 0.5) * (isMobile ? 200 : 400),
+                duration: 1
+            }, 0);
         });
 
-        // 2. Màn hình 2: Bó hoa hồng thật và Chữ hiện ra
-        mainTimeline.to("#bouquet-container", {
-            opacity: 1, // Hiện bó hoa
-            duration: 1,
-            ease: "power2.out"
-        }, 0.2); // Hiện hơi trễ một chút sau khi trái tim tan
-
-        mainTimeline.to("#bouquetImg", {
-            scale: 1, // Phóng to bó hoa nhẹ nhàng (từ 0.8 lên 1)
-            duration: 1.5,
-            ease: "back.out(1.5)" // Hiệu ứng bay vào hơi lố rồi dừng lại
-        }, 0.3); // Đồng bộ với bó hoa hiện ra
-
-        // Hiện dòng chữ Happy Women's Day rực rỡ
+        // Hiện bó hoa và chữ
+        mainTimeline.to("#bouquet-container", { opacity: 1, duration: 0.5 }, 0.2);
+        mainTimeline.to("#bouquetImg", { scale: 1, duration: 1, ease: "back.out(1.2)" }, 0.3);
         mainTimeline.to("#wishingText", {
             opacity: 1,
             y: 0,
-            scale: 1,
             duration: 1,
             ease: "power2.out"
-        }, 0.7); // Hiện ra khi bó hoa gần hoàn tất
+        }, 0.6);
 
     </script>
 </body>
